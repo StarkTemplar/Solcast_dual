@@ -1,3 +1,12 @@
+Solcast Dual array Hubitat device driver
+
+Original code from https://raw.githubusercontent.com/ke7lvb/Solcast/main/solcast.groovy
+
+Modified to allow two resource IDs to be entered. Collects data for each array and totals the site data.
+
+Note: Each refresh by this driver makes 2 API calls to Solcast.
+
+
 # Solcast - Hubitat
 Hubitat Driver using the Solcast Solar Estimate API
 
