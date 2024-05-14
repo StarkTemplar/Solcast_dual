@@ -1,8 +1,8 @@
-Solcast Dual array Hubitat device driver
+Solcast dual array Hubitat device driver
 
-Original code from https://raw.githubusercontent.com/ke7lvb/Solcast/main/solcast.groovy
+Forked from from https://raw.githubusercontent.com/ke7lvb/Solcast/main/solcast.groovy
 
-Modified to allow two resource IDs to be entered. Collects data for each array and totals the site data.
+Modified to allow two resource IDs to be entered. Collects data for each array and totals the site data. THIS WILL ONLY WORK IF YOU ENTER TWO RESOURCE IDs.
 
 Note: Each refresh by this driver makes 2 API calls to Solcast.
 
@@ -13,7 +13,7 @@ Hubitat Driver using the Solcast Solar Estimate API
 1. Install the driver
 2. Create a Virtual Device and apply the driver
 3. Create a free account with [Solcast](https://toolkit.solcast.com.au/register/hobbyist)
-4. Add your Site ID and API key to the virtual device
+4. Add your Site IDs and API key to the virtual device
 5. Click Refresh to get your first estimate
 
 
