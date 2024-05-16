@@ -3,7 +3,7 @@ metadata {
         name: "Solcast_dual",
         namespace: "alan_f",
         author: "Alan F",
-        importUrl: "https://raw.githubusercontent.com/youzer-name/Solcast_dual/main/solcast.groovy",
+        importUrl: "https://raw.githubusercontent.com/youzer-name/Solcast_dual/main/solcast.groovy",    
     ) {
         capability "Refresh"
         capability "EnergyMeter"
@@ -11,13 +11,25 @@ metadata {
 
         attribute "energy", "number"
         attribute "power", "number"
+        attribute "24 Hour Peak Production_a", "number"
+        attribute "24 Hour Peak Production_b", "number"
+        attribute "48 Hour Peak Production_a", "number"
+        attribute "48 Hour Peak Production_b", "number"
+        attribute "72 Hour Peak Production_a", "number"
+        attribute "72 Hour Peak Production_b", "number"
+        attribute "1 Hour Estimate_a", "number"
+        attribute "1 Hour Estimate_b", "number"
         attribute "1 Hour Estimate", "number"
         attribute "one_hour_estimate", "number"
-        attribute "24 Hour Peak Production", "number"
-        attribute "48 Hour Peak Production", "number"
-        attribute "72 Hour Peak Production", "number"
+        attribute "24 Hour Estimate", "number"
+        attribute "24 Hour Estimate - High", "number"
+        attribute "24 Hour Estimate - Low", "number"
         attribute "48 Hour Estimate", "number"
+        attribute "48 Hour Estimate - High", "number"
+        attribute "48 Hour Estimate - Low", "number"
         attribute "72 Hour Estimate", "number"
+        attribute "72 Hour Estimate - High", "number"
+        attribute "72 Hour Estimate - Low", "number"
         attribute "lastUpdate", "string"
     }
     preferences {
@@ -74,7 +86,7 @@ import groovy.json.JsonOutput;
 def refresh() {
     outputTZ = TimeZone.getTimeZone('UTC')
 
-    def next1 =0;
+    def next1 = 0;
     def next24 = 0;
     def next24High = 0;
     def next24Low = 0;
@@ -89,7 +101,7 @@ def refresh() {
     if(debugLog) log.debug host
     forecasts = httpGet([uri: host]) {resp -> def respData = resp.data.forecasts}
     //if(debugLog) log.debug JsonOutput.toJson(forecasts)
-    def next1_a =0;
+    def next1_a = 0;
     def next24_a = 0;
     def next24High_a = 0;
     def next24Low_a = 0;
@@ -125,7 +137,7 @@ def refresh() {
 
     tomorrow = new Date().next().format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
     forecast24_a = forecasts.findAll { it.period_end < tomorrow}
-    //if(debugLog) log.info forecast24_a
+    //if(debugLog) log.debug forecast24_a
     peak24_a = forecast24_a.max() { it.pv_estimate }
 
     twoDays = new Date().plus(2).format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
@@ -136,12 +148,12 @@ def refresh() {
     
     if(logEnable) log.info  "{ \"next1_a\": " + next1_a + ", \"next24_a\": " +  next24_a + ", \"next24High_a\": " +  next24High_a + ", \"next24Low_a\": " + next24Low_a  + ", \"next48_a\": " + next48_a + ", \"next48High_a\": " + next48High_a + ", \"next48Low_a\": " + next48Low_a + ", \"next72_a\": " + next72_a + ", \"next72High_a\": " + next72High_a + ", \"next72Low_a\": " +  next72Low_a + "}";
     
-// Duplicate API call
+// API call for b site
     host = "https://api.solcast.com.au/rooftop_sites/${resource_id_b}/forecasts?format=json&api_key=${api_key}&hours=72"
     if(debugLog) log.debug host
     forecasts = httpGet([uri: host]) {resp -> def respData = resp.data.forecasts}
     //if(debugLog) log.debug JsonOutput.toJson(forecasts)
-    def next1_b =0;
+    def next1_b = 0;
     def next24_b = 0;
     def next24High_b = 0;
     def next24Low_b = 0;
@@ -151,7 +163,7 @@ def refresh() {
     def next72_b = 0;
     def next72High_b = 0;
     def next72Low_b = 0;
-    //def size = forecasts.size();
+
     size = forecasts.size();
     for(int x=0; x<size; x++){
         if(debugLog) log.debug x + " : " + forecasts[x]
@@ -178,7 +190,7 @@ def refresh() {
 
     tomorrow = new Date().next().format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
     forecast24_b = forecasts.findAll { it.period_end < tomorrow}
-    //if(debugLog) log.info forecast24_b
+    //if(debugLog) log.debug forecast24_b
     peak24_b = forecast24_b.max() { it.pv_estimate }
 
     twoDays = new Date().plus(2).format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
@@ -186,47 +198,52 @@ def refresh() {
     peak48_b = forecast48_b.max() { it.pv_estimate }
 
     peak72_b = forecasts.max() { it.pv_estimate }
-//    if(logEnable) log.info  "next1_b " + next1_b + " - next24_b " +  next24_b + " - next24High_b " +  next24High_b + " - next24Low_b " + next24Low_b + " - next48_b " + next48_b + " - next48High_b " + next48High_b + " - next48Low_b " + next48Low_b + " - next72_b " + next72_b + " - next72High_b " + next72High_b + " - next72Low_b " +  next72Low_b;
+    
     if(logEnable) log.info  "{ \"next1_b\": " + next1_b + ", \"next24_b\": " +  next24_b + ", \"next24High_b\": " +  next24High_b + ", \"next24Low_b\": " + next24Low_b  + ", \"next48_b\": " + next48_b + ", \"next48High_b\": " + next48High_b + ", \"next48Low_b\": " + next48Low_b + ", \"next72_b\": " + next72_b + ", \"next72High_b\": " + next72High_b + ", \"next72Low_b\": " +  next72Low_b + "}";    
+
+
+//calculate totals
+    
+    def est_1hour = (next1_a + next1_b).setScale(2, BigDecimal.ROUND_HALF_UP)
+    def est_24hour = (next24_a + next24_b).setScale(2, BigDecimal.ROUND_HALF_UP)
+    def est_48hour = (next48_a + next48_b).setScale(2, BigDecimal.ROUND_HALF_UP)
+    def est_72hour = (next72_a + next72_b).setScale(2, BigDecimal.ROUND_HALF_UP)
+    
+    def est_24hour_high = (next24High_a + next24High_b).setScale(2, BigDecimal.ROUND_HALF_UP)
+    def est_48hour_high = (next48High_a + next48High_b).setScale(2, BigDecimal.ROUND_HALF_UP)
+    def est_72hour_high = (next72Low_a + next72Low_b).setScale(2, BigDecimal.ROUND_HALF_UP)
+    
+    def est_24hour_low = (next24Low_a + next24Low_b).setScale(2, BigDecimal.ROUND_HALF_UP)
+    def est_48hour_low = (next48Low_a + next48Low_b).setScale(2, BigDecimal.ROUND_HALF_UP)
+    def est_72hour_low = (next72Low_a + next72Low_b).setScale(2, BigDecimal.ROUND_HALF_UP)
     
 //send events
-    state.peak24_a = peak24_a.pv_estimate
-    state.peak24_b = peak24_b.pv_estimate
-    state.peak24 = peak24_a.pv_estimate + peak24_b.pv_estimate
-    sendEvent(name: "24 Hour Peak Production", value: state.peak24)
-    state.peak48_a = peak48_a.pv_estimate
-    state.peak48_b = peak48_b.pv_estimate
-    state.peak48 = peak48_a.pv_estimate + peak24_b.pv_estimate
-    sendEvent(name: "48 Hour Peak Production", value: state.peak48)
-    state.peak72_a = peak72_a.pv_estimate
-    state.peak72_b = peak72_b.pv_estimate
-    state.peak72 = peak72_a.pv_estimate + peak72_b.pv_estimate
-    sendEvent(name: "72 Hour Peak Production", value: state.peak72)
-    state.next1_a = next1_a*1000
-    state.next1_b = next1_b*1000
-    state.next1 = next1_a*1000 + next1_b*1000
-    sendEvent(name: "1 Hour Estimate", value: next1_a*1000 + next1_b*1000)
-    sendEvent(name: "one_hour_estimate", value: next1_a*1000 + next1_b*1000)
-    state.next24 = next24_a + next24_b
-    sendEvent(name: "energy", value: next24_a + next24_b)
-    sendEvent(name: "power", value: next24_a*1000 + next24_b*1000)
-    state.next24High = next24High_a + next24High_b
-    state.next24Low = next24Low_a + next24Low_b
-    state.next48 = next48_a + next48_b
-    sendEvent(name: "48 Hour Estimate", value: next48_a + next48_b)
-    state.next48High = next48High_a + next48High_b
-    state.next48Low =next48Low_a + next48Low_b
-    state.next72 = next72_a + next72_b
-    sendEvent(name: "72 Hour Estimate", value: next72_a + next72_b)
-    state.next72High = next72High_a + next72High_b
-    state.next72Low = next72Low_a + next72Low_b
-
+    sendEvent(name: "24 Hour Peak Production_a", value: peak24_a.pv_estimate.setScale(2, BigDecimal.ROUND_HALF_UP))
+    sendEvent(name: "24 Hour Peak Production_b", value: peak24_b.pv_estimate.setScale(2, BigDecimal.ROUND_HALF_UP))
+    sendEvent(name: "48 Hour Peak Production_a", value: peak48_a.pv_estimate.setScale(2, BigDecimal.ROUND_HALF_UP))
+    sendEvent(name: "48 Hour Peak Production_b", value: peak48_b.pv_estimate.setScale(2, BigDecimal.ROUND_HALF_UP))
+    sendEvent(name: "72 Hour Peak Production_a", value: peak72_a.pv_estimate.setScale(2, BigDecimal.ROUND_HALF_UP))
+    sendEvent(name: "72 Hour Peak Production_b", value: peak72_b.pv_estimate.setScale(2, BigDecimal.ROUND_HALF_UP))
+    sendEvent(name: "1 Hour Estimate_a", value: (next1_a*1000).setScale(2, BigDecimal.ROUND_HALF_UP))
+    sendEvent(name: "1 Hour Estimate_b", value: (next1_a*1000).setScale(2, BigDecimal.ROUND_HALF_UP))
+    sendEvent(name: "1 Hour Estimate", value: est_1hour)
+    sendEvent(name: "one_hour_estimate", value: est_1hour)
+    sendEvent(name: "24 Hour Estimate", value: est_24hour)
+    sendEvent(name: "energy", value: est_24hour)
+    sendEvent(name: "power", value: est_24hour*1000)
+    sendEvent(name: "24 Hour Estimate - High", value: est_24hour_high)
+    sendEvent(name: "24 Hour Estimate - Low", value: est_24hour_low)
+    sendEvent(name: "48 Hour Estimate", value: est_48hour)
+    sendEvent(name: "48 Hour Estimate - High", value: est_48hour_high)
+    sendEvent(name: "48 Hour Estimate - Low", value: est_48hour_low)
+    sendEvent(name: "72 Hour Estimate", value: est_72hour)
+    sendEvent(name: "72 Hour Estimate - High", value: est_72hour_high)
+    sendEvent(name: "72 Hour Estimate - Low", value: est_72hour_low)
 
     now = new Date().format("yyyy-MM-dd'T'HH:mm:ss'Z'")
-    state.lastUpdate = timeToday(now)
-    sendEvent(name: "lastUpdate", value: state.lastUpdate)
-    
-//    if(logEnable) log.info  "next1 " + state.next1 + " - next24 " +  state.next24 + " - next24High " +  state.next24High + " - next24Low " + state.next24Low + " - next48 " + state.next48 + " - next48High " + state.next48High + " - next48Low " + state.next48Low + " - next72 " + state.next72 + " - next72High " + state.next72High + " - next72Low " +  state.next72Low;
-    if(logEnable) log.info  "{ \"next1\": " + state.next1 + ", \"next24\": " +  state.next24 + ", \"next24High\": " +  state.next24High + ", \"next24Low\": " + state.next24Low  + ", \"next48\": " + state.next48 + ", \"next48High\": " + state.next48High + ", \"next48Low\": " + state.next48Low + ", \"next72\": " + state.next72 + ", \"next72High\": " + state.next72High + ", \"next72Low\": " +  state.next72Low + "}";    
+    sendEvent(name: "lastUpdate", value: timeToday(now))
+
+//log message for totals
+    if(logEnable) log.info  "{ \"next1\": " + est_1hour + ", \"next24\": " +  est_24hour + ", \"next24High\": " +  est_24hour_high + ", \"next24Low\": " + est_24hour_low  + ", \"next48\": " + est_48hour + ", \"next48High\": " + est_48hour_high + ", \"next48Low\": " + est_48hour_low + ", \"next72\": " + est_72hour + ", \"next72High\": " + est_72hour_high + ", \"next72Low\": " +  est_72hour_low + "}";    
     
 }
