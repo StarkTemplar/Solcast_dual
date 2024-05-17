@@ -53,7 +53,7 @@ metadata {
 }
 
 def version() {
-    return "1.0.0"
+    return "1.0.1"
 }
 
 def installed() {
@@ -262,12 +262,15 @@ def refresh() {
 // Create Dashboard tile
     if(htmlTile) {
         
+        //get local time for last update
+        def nowlocal = String.format('%tF %<tH:%<tM:%<tS', java.time.LocalDateTime.now())
+            
         html24hour ="<div style='line-height:1.0; font-size:0.75em;'><br>Total Est: ${est_24hour} kWh<br></div>"
 	    html24hour +="<div style='line-height:50%;'><br></div>"
 	    html24hour +="<div style='line-height:1.0; font-size:0.75em;'><br>Peak A: ${rnd_peak24_a} kW<br></div>"
 	    html24hour +="<div style='line-height:1.0; font-size:0.75em;'><br>Peak B: ${rnd_peak24_b} kW<br></div>"
         html24hour +="<div style='line-height:50%;'><br></div>"
-        html24hour +="<div style='line-height:1.0; font-size:0.6em;'><br>Updated: ${now}</div>"
+        html24hour +="<div style='line-height:1.0; font-size:0.75em;'><br>Updated: ${nowlocal}</div>"
     
         sendEvent(name: "html24hour", value: html24hour)
         
