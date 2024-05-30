@@ -49,11 +49,16 @@ metadata {
             12: "12 Hours",
             24: "Daily",
         ], required: true, defaultValue: "0")
+        input name: "refreshhour", type: "enum", title: "Refresh time (hour)", defaultValue: 0, description: "Only applies to Daily interval", options:["0","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23"]
+        input name: "refreshminute", type: "enum", title: "Refresh time (minute)", defaultValue: 0, options:["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","55","56","57","58","59"]
+        input name: "randomize", type: "bool", title: "Randomize seconds?", defaultValue: true, description: "Perform refresh random seconds after selected hour:minute"
+
     }
 }
 
 def version() {
-    return "1.0.1"
+    return "1.0.2"
+    //1.0.2 - add settable refresh time and random seconds option
 }
 
 def installed() {
@@ -71,12 +76,18 @@ def updated() {
     if (logEnable) log.info "Settings updated"
     if (settings.refresh_interval != "0") {
         //refresh()
-        if (settings.refresh_interval == "24") {
-            schedule("51 7 4 ? * * *", refresh, [overwrite: true])
+        def refreshseconds = 0
+    if (settings.randomize)
+        {
+        refreshseconds = Math.abs(new Random().nextInt() % 59) +1
+        }
+        
+        if (settings.refresh_interval == "24") { 
+           schedule("${refreshseconds} ${settings.refreshminute} ${settings.refreshhour} ? * * *", refresh, [overwrite: true])
         } else if(settings.refresh_interval == "30"){
-            schedule("51 */30 * ? * *", refresh, [overwrite: true])
+        schedule("${refreshseconds} */30 * ? * *", refresh, [overwrite: true])
         } else {
-            schedule("51 7 */${settings.refresh_interval} ? * * *", refresh, [overwrite: true])
+        schedule("${refreshseconds} ${refreshminute} */${settings.refresh_interval} ? * * *", refresh, [overwrite: true])
         }
     }else{
         unschedule(refresh)
@@ -276,5 +287,20 @@ def refresh() {
         
         if(debugLog) {log.debug "html24hour contains ${html24hour}"}
 	}
+    
+    if (settings.refresh_interval != "0" && settings.randomize) 
+    //if randomize is selected, reset refresh time
+    {
+        def refreshseconds = 0
+        refreshseconds = Math.abs(new Random().nextInt() % 59) +1
+    
+        if (settings.refresh_interval == "24") { 
+           schedule("${refreshseconds} ${settings.refreshminute} ${settings.refreshhour} ? * * *", refresh, [overwrite: true])
+        } else if(settings.refresh_interval == "30"){
+        schedule("${refreshseconds} */30 * ? * *", refresh, [overwrite: true])
+        } else {
+        schedule("${refreshseconds} ${refreshminute} */${settings.refresh_interval} ? * * *", refresh, [overwrite: true])
+        }
+    }    
     
 }
