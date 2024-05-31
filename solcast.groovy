@@ -59,7 +59,7 @@ metadata {
 def version() {
     return "1.0.3"
     //1.0.2 - add settable refresh time and random seconds option
-    //1.0.3 - fix typo in next1_b calculation
+    //1.0.3 - fix typo in next1_b calculation, add delay between API calls
 }
 
 def installed() {
@@ -162,6 +162,11 @@ def refresh() {
     peak72_a = forecasts.max() { it.pv_estimate }
     
     if(logEnable) log.info  "{ \"next1_a\": " + next1_a + ", \"next24_a\": " +  next24_a + ", \"next24High_a\": " +  next24High_a + ", \"next24Low_a\": " + next24Low_a  + ", \"next48_a\": " + next48_a + ", \"next48High_a\": " + next48High_a + ", \"next48Low_a\": " + next48Low_a + ", \"next72_a\": " + next72_a + ", \"next72High_a\": " + next72High_a + ", \"next72Low_a\": " +  next72Low_a + "}";
+
+	    
+//delay between API calls
+    
+    pauseExecution(30000)
     
 // API call for b site
     host = "https://api.solcast.com.au/rooftop_sites/${resource_id_b}/forecasts?format=json&api_key=${api_key}&hours=72"
