@@ -57,8 +57,9 @@ metadata {
 }
 
 def version() {
-    return "1.0.2"
+    return "1.0.3"
     //1.0.2 - add settable refresh time and random seconds option
+    //1.0.3 - fix typo in next1_b calculation
 }
 
 def installed() {
@@ -239,7 +240,7 @@ def refresh() {
     def rnd_peak72_a = peak72_a.pv_estimate.setScale(2, BigDecimal.ROUND_HALF_UP)
     def rnd_peak72_b = peak72_b.pv_estimate.setScale(2, BigDecimal.ROUND_HALF_UP)
     def rnd_next1_a = (next1_a*1000).setScale(2, BigDecimal.ROUND_HALF_UP)
-    def rnd_next1_b = (next1_a*1000).setScale(2, BigDecimal.ROUND_HALF_UP)
+    def rnd_next1_b = (next1_b*1000).setScale(2, BigDecimal.ROUND_HALF_UP)
     
 //send events
     sendEvent(name: "24 Hour Peak Production_a", value: rnd_peak24_a)
