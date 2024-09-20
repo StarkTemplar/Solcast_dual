@@ -281,14 +281,15 @@ def refresh() {
         
         //get local time for last update
         def nowlocal = String.format('%tF %<tH:%<tM:%<tS', java.time.LocalDateTime.now())
-            
-        html24hour ="<div style='line-height:1.0; font-size:0.75em;'><br>Total Est: ${est_24hour} kWh<br></div>"
-	    html24hour +="<div style='line-height:50%;'><br></div>"
-	    html24hour +="<div style='line-height:1.0; font-size:0.75em;'><br>Peak A: ${rnd_peak24_a} kW<br></div>"
-	    html24hour +="<div style='line-height:1.0; font-size:0.75em;'><br>Peak B: ${rnd_peak24_b} kW<br></div>"
-        html24hour +="<div style='line-height:50%;'><br></div>"
-        html24hour +="<div style='line-height:1.0; font-size:0.75em;'><br>Updated: ${nowlocal}</div>"
-    
+
+	html24hour ="<div style='line-height:100%; font-size:0.75em;'><br>24 Hour Estimates:<br></div>"
+        html24hour +="<div style='line-height:100%; font-size:0.75em;'><br>${est_24hour_low} / ${est_24hour} / ${est_24hour_high} kWh<br></div>"        
+	    html24hour +="<div style='line-height:25%;'><br></div>"
+	    html24hour +="<div style='line-height:100%; font-size:0.75em;'><br>Peak Array Power:<br></div>"
+	    html24hour +="<div style='line-height:100%; font-size:0.75em;'><br>${rnd_peak24_a} kW / ${rnd_peak24_b} kW<br></div>"
+        html24hour +="<div style='line-height:25%;'><br></div>"
+        html24hour +="<div style='line-height:100%; font-size:0.75em;'><br>Updated: ${nowlocal}</div>"
+	
         sendEvent(name: "html24hour", value: html24hour)
         
         if(debugLog) {log.debug "html24hour contains ${html24hour}"}
