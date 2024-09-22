@@ -282,10 +282,10 @@ def refresh() {
         //get local time for last update
         def nowlocal = String.format('%tF %<tH:%<tM:%<tS', java.time.LocalDateTime.now())
 
-	html24hour ="<div style='line-height:100%; font-size:0.75em;'><br>24 Hour Estimates:<br></div>"
+	    html24hour ="<div style='line-height:100%; font-size:0.75em;'><br>24 Hour Estimates:<br></div>"
         html24hour +="<div style='line-height:100%; font-size:0.75em;'><br>${est_24hour_low} / ${est_24hour} / ${est_24hour_high} kWh<br></div>"        
 	    html24hour +="<div style='line-height:25%;'><br></div>"
-	    html24hour +="<div style='line-height:100%; font-size:0.75em;'><br>Peak Array Power:<br></div>"
+	    html24hour +="<div style='line-height:100%; font-size:0.75em;'><br>Average Array Power:<br></div>"
 	    html24hour +="<div style='line-height:100%; font-size:0.75em;'><br>${rnd_peak24_a} kW / ${rnd_peak24_b} kW<br></div>"
         html24hour +="<div style='line-height:25%;'><br></div>"
         html24hour +="<div style='line-height:100%; font-size:0.75em;'><br>Updated: ${nowlocal}</div>"
