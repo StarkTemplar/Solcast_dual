@@ -1,0 +1,16 @@
+{
+  "packageName": "Solcast_dual",
+  "author": "StarkTemplar",
+  "version": "1.0.4",
+  "minimumHEVersion": "0.0",
+  "dateReleased": "2025-01-30",
+  "drivers": [
+    {
+      "id": "b7016c98-85ba-41a4-b884-c9e2c845d8d7",
+      "name": "Solcast_dual",
+      "namespace": "StarkTemplar",
+      "location": "https://raw.githubusercontent.com/StarkTemplar/Solcast_dual/refs/heads/main/solcast.groovy",
+      "required": true
+    }
+  ]
+}

@@ -1,9 +1,9 @@
 metadata {
     definition(
         name: "Solcast_dual",
-        namespace: "alan_f",
-        author: "Alan F",
-        importUrl: "https://raw.githubusercontent.com/youzer-name/Solcast_dual/main/solcast.groovy",    
+        namespace: "StarkTemplar",
+        author: "StarkTemplar",
+        importUrl: "https://raw.githubusercontent.com/StarkTemplar/Solcast_dual/refs/heads/main/solcast.groovy",    
     ) {
         capability "Refresh"
         capability "EnergyMeter"
@@ -39,7 +39,7 @@ metadata {
         input name: "htmlTile", type: "bool", title: "Create Dashboard Tile?", defaultValue: false, description: ""
         input name: "api_key", type: "string", title: "API Key", required: true
         input name: "resource_id_a", type: "string", title: "Site Resource ID_a", required: true
-        input name: "resource_id_b", type: "string", title: "Site Resource ID_b", required: true
+        input name: "resource_id_b", type: "string", title: "Site Resource ID_b", required: false
         input("refresh_interval", "enum", title: "How often to refresh the forecast data", options: [
             0: "Do NOT update",
             30: "30 minutes",
@@ -57,9 +57,10 @@ metadata {
 }
 
 def version() {
-    return "1.0.3"
+    return "1.0.4"
     //1.0.2 - add settable refresh time and random seconds option
     //1.0.3 - fix typo in next1_b calculation, add delay between API calls
+    //1.0.4 - update to allow only 1 resource ID to be used and still work
 }
 
 def installed() {
@@ -163,16 +164,6 @@ def refresh() {
     
     if(logEnable) log.info  "{ \"next1_a\": " + next1_a + ", \"next24_a\": " +  next24_a + ", \"next24High_a\": " +  next24High_a + ", \"next24Low_a\": " + next24Low_a  + ", \"next48_a\": " + next48_a + ", \"next48High_a\": " + next48High_a + ", \"next48Low_a\": " + next48Low_a + ", \"next72_a\": " + next72_a + ", \"next72High_a\": " + next72High_a + ", \"next72Low_a\": " +  next72Low_a + "}";
 
-	    
-//delay between API calls
-    
-    pauseExecution(30000)
-    
-// API call for b site
-    host = "https://api.solcast.com.au/rooftop_sites/${resource_id_b}/forecasts?format=json&api_key=${api_key}&hours=72"
-    if(debugLog) log.debug host
-    forecasts = httpGet([uri: host]) {resp -> def respData = resp.data.forecasts}
-    //if(debugLog) log.debug JsonOutput.toJson(forecasts)
     def next1_b = 0;
     def next24_b = 0;
     def next24High_b = 0;
@@ -184,40 +175,54 @@ def refresh() {
     def next72High_b = 0;
     def next72Low_b = 0;
 
-    size = forecasts.size();
-    for(int x=0; x<size; x++){
-        if(debugLog) log.debug x + " : " + forecasts[x]
-        pv_estimate = forecasts[x].pv_estimate/2
-        pv_estimate_high = forecasts[x].pv_estimate90/2
-        pv_estimate_low = forecasts[x].pv_estimate10/2
-        if(x < 2){
-            next1_b = next1_b + pv_estimate
+    log.trace("resource_id_b: + ${resource_id_b}")
+	
+    //only make the 2nd API call if resource_id_b is valid
+    if ( resource_id_b == 1 ) {
+        //delay between API calls
+        pauseExecution(30000)
+    
+        // API call for b site
+        host = "https://api.solcast.com.au/rooftop_sites/${resource_id_b}/forecasts?format=json&api_key=${api_key}&hours=72"
+        if(debugLog) log.debug host
+        forecasts = httpGet([uri: host]) {resp -> def respData = resp.data.forecasts}
+        //if(debugLog) log.debug JsonOutput.toJson(forecasts)
+
+        size = forecasts.size();
+        for(int x=0; x<size; x++){
+            if(debugLog) log.debug x + " : " + forecasts[x]
+            pv_estimate = forecasts[x].pv_estimate/2
+            pv_estimate_high = forecasts[x].pv_estimate90/2
+            pv_estimate_low = forecasts[x].pv_estimate10/2
+            if(x < 2){
+                next1_b = next1_b + pv_estimate
+            }
+            if(x < 48){
+                next24_b = next24_b + pv_estimate
+                next24High_b = next24High_b + pv_estimate_high
+                next24Low_b = next24Low_b + pv_estimate_low
+            }
+            if(x < 96){
+                next48_b = next48_b + pv_estimate
+                next48High_b = next48High_b + pv_estimate_high
+                next48Low_b = next48Low_b + pv_estimate_low
+            }
+            next72_b = next72_b + pv_estimate
+            next72High_b = next72High_b + pv_estimate_high
+            next72Low_b = next72Low_b + pv_estimate_low
         }
-        if(x < 48){
-            next24_b = next24_b + pv_estimate
-            next24High_b = next24High_b + pv_estimate_high
-            next24Low_b = next24Low_b + pv_estimate_low
-        }
-        if(x < 96){
-            next48_b = next48_b + pv_estimate
-            next48High_b = next48High_b + pv_estimate_high
-            next48Low_b = next48Low_b + pv_estimate_low
-        }
-        next72_b = next72_b + pv_estimate
-        next72High_b = next72High_b + pv_estimate_high
-        next72Low_b = next72Low_b + pv_estimate_low
+
+        tomorrow = new Date().next().format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
+        forecast24_b = forecasts.findAll { it.period_end < tomorrow}
+        //if(debugLog) log.debug forecast24_b
+        peak24_b = forecast24_b.max() { it.pv_estimate }
+
+        twoDays = new Date().plus(2).format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
+        forecast48_b = forecasts.findAll { it.period_end < twoDays}
+        peak48_b = forecast48_b.max() { it.pv_estimate }
+
+        peak72_b = forecasts.max() { it.pv_estimate }
     }
-
-    tomorrow = new Date().next().format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
-    forecast24_b = forecasts.findAll { it.period_end < tomorrow}
-    //if(debugLog) log.debug forecast24_b
-    peak24_b = forecast24_b.max() { it.pv_estimate }
-
-    twoDays = new Date().plus(2).format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
-    forecast48_b = forecasts.findAll { it.period_end < twoDays}
-    peak48_b = forecast48_b.max() { it.pv_estimate }
-
-    peak72_b = forecasts.max() { it.pv_estimate }
     
     if(logEnable) log.info  "{ \"next1_b\": " + next1_b + ", \"next24_b\": " +  next24_b + ", \"next24High_b\": " +  next24High_b + ", \"next24Low_b\": " + next24Low_b  + ", \"next48_b\": " + next48_b + ", \"next48High_b\": " + next48High_b + ", \"next48Low_b\": " + next48Low_b + ", \"next72_b\": " + next72_b + ", \"next72High_b\": " + next72High_b + ", \"next72Low_b\": " +  next72Low_b + "}";    
 
@@ -308,6 +313,5 @@ def refresh() {
         } else {
         schedule("${refreshseconds} ${refreshminute} */${settings.refresh_interval} ? * * *", refresh, [overwrite: true])
         }
-    }    
-    
+    }       
 }

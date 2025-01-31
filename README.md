@@ -1,10 +1,10 @@
 Solcast dual array Hubitat device driver
 
-Forked from from https://raw.githubusercontent.com/ke7lvb/Solcast/main/solcast.groovy
+Forked from from https://github.com/youzer-name/Solcast_dual
 
-Modified to allow two resource IDs to be entered. Collects data for each array and totals the site data. THIS WILL ONLY WORK IF YOU ENTER TWO RESOURCE IDs.
+Modified to allow one or two resource IDs to be entered. Collects data for each array and totals the site data.
 
-Note: Each refresh by this driver makes 2 API calls to Solcast.
+Note: Each refresh by this driver makes up to 2 API calls to Solcast.
 
 
 # Solcast - Hubitat
