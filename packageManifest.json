@@ -3,7 +3,8 @@
   "author": "StarkTemplar",
   "version": "1.0.4",
   "minimumHEVersion": "0.0",
-  "dateReleased": "2025-01-30",
+  "dateReleased": "2025-02-01",
+  "releaseNotes": "Version [1.0.6] - 2025-02-01\n  - Update to add test mode. This saves the API json response in a state variable to avoid API calls.",
   "drivers": [
     {
       "id": "b7016c98-85ba-41a4-b884-c9e2c845d8d7",
