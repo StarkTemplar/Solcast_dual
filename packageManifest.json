@@ -1,12 +1,12 @@
 {
   "packageName": "Solcast_dual",
   "author": "StarkTemplar",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "minimumHEVersion": "0.0",
   "dateReleased": "2025-02-02",
   "documentationLink": "https://github.com/StarkTemplar/Solcast_dual",
   "communityLink": "https://community.hubitat.com/t/release-solar-forecast-estimator/82064",
-  "releaseNotes": "Version [1.0.7] - 2025-02-02\n  - Updated Peak Metrics to not be cumulative.",
+  "releaseNotes": "Version [1.0.8] - 2025-02-02\n  - Updated Peak Metrics to include high and low estimates.",
   "drivers": [
     {
       "id": "b7016c98-85ba-41a4-b884-c9e2c845d8d7",

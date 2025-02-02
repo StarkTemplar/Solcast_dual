@@ -10,6 +10,7 @@
  *      2025-01-31    StarkTemplar  1.0.5       Updated html tile to show all 3 estimates.
  *      2025-02-01    StarkTemplar  1.0.6       Update to add test mode. This saves the API json response in a state variable to avoid API calls.
  *      2025-02-02    StarkTemplar  1.0.7       Updated Peak Metrics to not be cumulative.
+ *      2025-02-02    StarkTemplar  1.0.8       Updated Peak Metrics to include high and low estimates.
  */
 
 metadata {
@@ -26,11 +27,23 @@ metadata {
         attribute "energy", "number"
         attribute "power", "number"
         attribute "24 Hour Peak Production_a", "number"
+        attribute "24 Hour Peak Production_a - High", "number"
+        attribute "24 Hour Peak Production_a - Low", "number"
         attribute "24 Hour Peak Production_b", "number"
+        attribute "24 Hour Peak Production_b - High", "number"
+        attribute "24 Hour Peak Production_b - Low", "number"
         attribute "48 Hour Peak Production_a", "number"
+        attribute "48 Hour Peak Production_a - High", "number"
+        attribute "48 Hour Peak Production_a - Low", "number"
         attribute "48 Hour Peak Production_b", "number"
+        attribute "48 Hour Peak Production_b - High", "number"
+        attribute "48 Hour Peak Production_b - Low", "number"
         attribute "72 Hour Peak Production_a", "number"
+        attribute "72 Hour Peak Production_a - High", "number"
+        attribute "72 Hour Peak Production_a - Low", "number"
         attribute "72 Hour Peak Production_b", "number"
+        attribute "72 Hour Peak Production_b - High", "number"
+        attribute "72 Hour Peak Production_b - Low", "number"
         attribute "1 Hour Estimate_a", "number"
         attribute "1 Hour Estimate_b", "number"
         attribute "1 Hour Estimate", "number"
@@ -74,7 +87,7 @@ metadata {
 import groovy.json.*;
 
 def version() {
-    return "1.0.7"
+    return "1.0.8"
 }
 
 def installed() {
@@ -110,19 +123,27 @@ def updated() {
 
 def refresh() {
      
-    outputTZ = TimeZone.getTimeZone('UTC')
-    def traceLog = true
+    def traceLog = false
     
-    def next1_a = 0;
-    def next24_a = 0;
-    def next24High_a = 0;
-    def next24Low_a = 0;
-    def next48_a = 0;
-    def next48High_a = 0;
-    def next48Low_a = 0;
-    def next72_a = 0;
-    def next72High_a = 0;
-    def next72Low_a = 0;
+    def next1_a = 0
+    def next24_a = 0
+    def next24High_a = 0
+    def next24Low_a = 0
+    def next48_a = 0
+    def next48High_a = 0
+    def next48Low_a = 0
+    def next72_a = 0
+    def next72High_a = 0
+    def next72Low_a = 0
+    def peak24_a = 0
+    def peak24High_a = 0
+    def peak24Low_a = 0
+    def peak48_a = 0
+    def peak48High_a = 0
+    def peak48Low_a = 0
+    def peak72_a = 0
+    def peak72High_a = 0
+    def peak72Low_a = 0
     
     host = "https://api.solcast.com.au/rooftop_sites/${resource_id_a}/forecasts?format=json&api_key=${api_key}&hours=72"
     if ( testMode == true ) {
@@ -139,13 +160,14 @@ def refresh() {
         nowlocal = new Date().format("MM-dd HH:mm")
 
         def size = forecasts.size();
-        if(traceLog) log.trace("size: ${size}")
-        for(int x=0; x<size; x++){
-            if(traceLog) log.trace x + " : " + forecasts[x]
+        //if(traceLog) log.trace("size: ${size}")
+        for(int x=0; x<size; x++) {
+            //if(traceLog) log.trace x + " : " + forecasts[x]
             //pv estimates are divided by 2 because the data is listed in 30 minute intervals.
             pv_estimate = forecasts[x].pv_estimate/2
             pv_estimate_high = forecasts[x].pv_estimate90/2
             pv_estimate_low = forecasts[x].pv_estimate10/2
+
             if(x < 2){
                 next1_a = next1_a + pv_estimate
             }
@@ -153,30 +175,28 @@ def refresh() {
                 next24_a = next24_a + pv_estimate
                 next24High_a = next24High_a + pv_estimate_high
                 next24Low_a = next24Low_a + pv_estimate_low
+                if ( forecasts[x].pv_estimate > peak24_a ) peak24_a = forecasts[x].pv_estimate
+                if ( forecasts[x].pv_estimate90 > peak24High_a ) peak24High_a = forecasts[x].pv_estimate90
+                if ( forecasts[x].pv_estimate10 > peak24Low_a ) peak24Low_a = forecasts[x].pv_estimate10
             }
-            if(x < 96){
+            if(x >= 48 && x < 96){
                 next48_a = next48_a + pv_estimate
                 next48High_a = next48High_a + pv_estimate_high
                 next48Low_a = next48Low_a + pv_estimate_low
+                if ( forecasts[x].pv_estimate > peak48_a ) peak48_a = forecasts[x].pv_estimate
+                if ( forecasts[x].pv_estimate90 > peak48High_a ) peak48High_a = forecasts[x].pv_estimate90
+                if ( forecasts[x].pv_estimate10 > peak48Low_a ) peak48Low_a = forecasts[x].pv_estimate10
             }
-            next72_a = next72_a + pv_estimate
-            next72High_a = next72High_a + pv_estimate_high
-            next72Low_a = next72Low_a + pv_estimate_low
+            if(x >= 96) {
+                next72_a = next72_a + pv_estimate
+                next72High_a = next72High_a + pv_estimate_high
+                next72Low_a = next72Low_a + pv_estimate_low
+                if ( forecasts[x].pv_estimate > peak72_a ) peak72_a = forecasts[x].pv_estimate
+                if ( forecasts[x].pv_estimate90 > peak72High_a ) peak72High_a = forecasts[x].pv_estimate90
+                if ( forecasts[x].pv_estimate10 > peak72Low_a ) peak72Low_a = forecasts[x].pv_estimate10
+            }
         }
-
-        tomorrow = new Date().next().format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
-        forecast24_a = forecasts.findAll { it.period_end < tomorrow }
-        if(traceLog) log.trace ("forecast24_a: ${forecast24_a}")
-        peak24_a = forecast24_a.max() { it.pv_estimate }
-
-        twoDays = new Date().plus(2).format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
-        forecast48_a = forecasts.findAll { it.period_end < twoDays && it.period_end > tomorrow }
-        if(traceLog) log.trace ("forecast48_a: ${forecast48_a}")
-        peak48_a = forecast48_a.max() { it.pv_estimate }
-
-        forecast72_a = forecasts.findAll { it.period_end > twoDays }
-        if(traceLog) log.trace ("forecast72_a: ${forecast72_a}")
-        peak72_a = forecast72_a.max() { it.pv_estimate }
+        
         if(debugLog) log.debug  "{ \"next1_a\": " + next1_a + ", \"next24_a\": " +  next24_a + ", \"next24High_a\": " +  next24High_a + ", \"next24Low_a\": " + next24Low_a  + ", \"next48_a\": " + next48_a + ", \"next48High_a\": " + next48High_a + ", \"next48Low_a\": " + next48Low_a + ", \"next72_a\": " + next72_a + ", \"next72High_a\": " + next72High_a + ", \"next72Low_a\": " +  next72Low_a + "}";
     }
     
@@ -191,6 +211,15 @@ def refresh() {
     def next72_b = 0;
     def next72High_b = 0;
     def next72Low_b = 0;
+    def peak24_b = 0
+    def peak24High_b = 0
+    def peak24Low_b = 0
+    def peak48_b = 0
+    def peak48High_b = 0
+    def peak48Low_b = 0
+    def peak72_b = 0
+    def peak72High_b = 0
+    def peak72Low_b = 0
 	
     //only make the 2nd API call if resource_id_b is valid
     if ( resource_id_b != null ) {    
@@ -208,7 +237,7 @@ def refresh() {
         if ( forecasts != false ) {
             size = forecasts.size();
             for(int x=0; x<size; x++){
-                if(traceLog) log.trace x + " : " + forecasts[x]
+                //if(traceLog) log.trace x + " : " + forecasts[x]
                 pv_estimate = forecasts[x].pv_estimate/2
                 pv_estimate_high = forecasts[x].pv_estimate90/2
                 pv_estimate_low = forecasts[x].pv_estimate10/2
@@ -219,30 +248,27 @@ def refresh() {
                     next24_b = next24_b + pv_estimate
                     next24High_b = next24High_b + pv_estimate_high
                     next24Low_b = next24Low_b + pv_estimate_low
+                    if ( forecasts[x].pv_estimate > peak24_b ) peak24_b = forecasts[x].pv_estimate
+                    if ( forecasts[x].pv_estimate90 > peak24High_b ) peak24High_b = forecasts[x].pv_estimate90
+                    if ( forecasts[x].pv_estimate10 > peak24Low_b ) peak24Low_b = forecasts[x].pv_estimate10
                 }
-                if(x < 96){
+                if(x >= 48 && x < 96){
                     next48_b = next48_b + pv_estimate
                     next48High_b = next48High_b + pv_estimate_high
                     next48Low_b = next48Low_b + pv_estimate_low
+                    if ( forecasts[x].pv_estimate > peak48_b ) peak48_b = forecasts[x].pv_estimate
+                    if ( forecasts[x].pv_estimate90 > peak48High_b ) peak48High_b = forecasts[x].pv_estimate90
+                    if ( forecasts[x].pv_estimate10 > peak48Low_b ) peak48Low_b = forecasts[x].pv_estimate10
                 }
-                next72_b = next72_b + pv_estimate
-                next72High_b = next72High_b + pv_estimate_high
-                next72Low_b = next72Low_b + pv_estimate_low
+                if(x >= 96) {
+                    next72_b = next72_b + pv_estimate
+                    next72High_b = next72High_b + pv_estimate_high
+                    next72Low_b = next72Low_b + pv_estimate_low
+                    if ( forecasts[x].pv_estimate > peak72_b ) peak72_b = forecasts[x].pv_estimate
+                    if ( forecasts[x].pv_estimate90 > peak72High_b ) peak72High_b = forecasts[x].pv_estimate90
+                    if ( forecasts[x].pv_estimate10 > peak72Low_b ) peak72Low_b = forecasts[x].pv_estimate10
+                }
             }
-
-            tomorrow = new Date().next().format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
-            forecast24_b = forecasts.findAll { it.period_end < tomorrow}
-            if(traceLog) log.trace ("forecast24_b: ${forecast24_b}")
-            peak24_b = forecast24_b.max() { it.pv_estimate }
-
-            twoDays = new Date().plus(2).format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
-            forecast48_b = forecasts.findAll { it.period_end < twoDays && it.period_end > tomorrow }
-            if(traceLog) log.trace ("forecast48_b: ${forecast48_b}")
-            peak48_b = forecast48_b.max() { it.pv_estimate }
-
-            forecast72_b = forecasts.findAll { it.period_end > twoDays }
-            if(traceLog) log.trace ("forecast72_b: ${forecast72_b}")
-            peak72_b = forecast72_b.max() { it.pv_estimate }
         }
     } else {
         if(logEnable) log.info("Skipping 2nd API call because resouce ID B is null")
@@ -267,20 +293,50 @@ def refresh() {
         est_72hour_low = (next72Low_a + next72Low_b).setScale(1, BigDecimal.ROUND_HALF_UP)
     
         //round values if they are not integers
-        if (peak24_a.pv_estimate instanceof Integer) {
-            rnd_peak24_a = peak24_a.pv_estimate
+        if (peak24_a instanceof Integer) {
+            rnd_peak24_a = peak24_a
         } else {
-            rnd_peak24_a = peak24_a.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
+            rnd_peak24_a = peak24_a.setScale(1, BigDecimal.ROUND_HALF_UP)
         }
-        if (peak48_a.pv_estimate instanceof Integer) {
-            rnd_peak48_a = peak48_a.pv_estimate
+        if (peak24High_a instanceof Integer) {
+            rnd_peak24High_a = peak24High_a
         } else {
-            rnd_peak48_a = peak48_a.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
+            rnd_peak24High_a = peak24High_a.setScale(1, BigDecimal.ROUND_HALF_UP)
         }
-        if (peak72_a.pv_estimate instanceof Integer) {
-            rnd_peak72_a = peak72_a.pv_estimate
+        if (peak24Low_a instanceof Integer) {
+            rnd_peak24Low_a = peak24Low_a
         } else {
-            rnd_peak72_a = peak72_a.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
+            rnd_peak24Low_a = peak24Low_a.setScale(1, BigDecimal.ROUND_HALF_UP)
+        }
+        if (peak48_a instanceof Integer) {
+            rnd_peak48_a = peak48_a
+        } else {
+            rnd_peak48_a = peak48_a.setScale(1, BigDecimal.ROUND_HALF_UP)
+        }
+        if (peak48High_a instanceof Integer) {
+            rnd_peak48High_a = peak48High_a
+        } else {
+            rnd_peak48High_a = peak48High_a.setScale(1, BigDecimal.ROUND_HALF_UP)
+        }
+        if (peak48Low_a instanceof Integer) {
+            rnd_peak48Low_a = peak48Low_a
+        } else {
+            rnd_peak48Low_a = peak48Low_a.setScale(1, BigDecimal.ROUND_HALF_UP)
+        }
+        if (peak72_a instanceof Integer) {
+            rnd_peak72_a = peak72_a
+        } else {
+            rnd_peak72_a = peak72_a.setScale(1, BigDecimal.ROUND_HALF_UP)
+        }
+        if (peak72High_a instanceof Integer) {
+            rnd_peak72High_a = peak72High_a
+        } else {
+            rnd_peak72High_a = peak72High_a.setScale(1, BigDecimal.ROUND_HALF_UP)
+        }
+        if (peak72Low_a instanceof Integer) {
+            rnd_peak72Low_a = peak72Low_a
+        } else {
+            rnd_peak72Low_a = peak72Low_a.setScale(1, BigDecimal.ROUND_HALF_UP)
         }
         if ((next1_a*1000) instanceof Integer) {
             rnd_next1_a = (next1_a*1000)
@@ -289,20 +345,50 @@ def refresh() {
         }
 
         if ( peak24_b ) {
-            if (peak24_b.pv_estimate instanceof Integer) {
-                rnd_peak24_b = peak24_b.pv_estimate
+            if (peak24_b instanceof Integer) {
+                rnd_peak24_b = peak24_b
             } else {
-                rnd_peak24_b = peak24_b.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
+                rnd_peak24_b = peak24_b.setScale(1, BigDecimal.ROUND_HALF_UP)
             }
-            if (peak48_b.pv_estimate instanceof Integer) {
-                rnd_peak48_b = peak48_b.pv_estimate
+            if (peak24High_b instanceof Integer) {
+                rnd_peak24High_b = peak24High_b
             } else {
-                rnd_peak48_b = peak48_b.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
+                rnd_peak24High_b = peak24High_b.setScale(1, BigDecimal.ROUND_HALF_UP)
             }
-            if (peak72_b.pv_estimate instanceof Integer) {
-                rnd_peak72_b = peak72_b.pv_estimate
+            if (peak24Low_b instanceof Integer) {
+                rnd_peak24Low_b = peak24Low_b
             } else {
-                rnd_peak72_b = peak72_b.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
+                rnd_peak24Low_b = peak24Low_b.setScale(1, BigDecimal.ROUND_HALF_UP)
+            }
+            if (peak48_b instanceof Integer) {
+                rnd_peak48_b = peak48_b
+            } else {
+                rnd_peak48_b = peak48_b.setScale(1, BigDecimal.ROUND_HALF_UP)
+            }
+            if (peak48High_b instanceof Integer) {
+                rnd_peak48High_b = peak48High_b
+            } else {
+                rnd_peak48High_b = peak48High_b.setScale(1, BigDecimal.ROUND_HALF_UP)
+            }
+            if (peak48Low_b instanceof Integer) {
+                rnd_peak48Low_b = peak48Low_b
+            } else {
+                rnd_peak48Low_b = peak48Low_b.setScale(1, BigDecimal.ROUND_HALF_UP)
+            }
+            if (peak72_b instanceof Integer) {
+                rnd_peak72_b = peak72_b
+            } else {
+                rnd_peak72_b = peak72_b.setScale(1, BigDecimal.ROUND_HALF_UP)
+            }
+            if (peak72High_b instanceof Integer) {
+                rnd_peak72High_b = peak72High_b
+            } else {
+                rnd_peak72High_b = peak72High_b.setScale(1, BigDecimal.ROUND_HALF_UP)
+            }
+            if (peak72Low_b instanceof Integer) {
+                rnd_peak72Low_b = peak72Low_b
+            } else {
+                rnd_peak72Low_b = peak72Low_b.setScale(1, BigDecimal.ROUND_HALF_UP)
             }
             if ( (next1_b*1000) instanceof Integer) {
                 rnd_next1_b = (next1_b*1000)
@@ -318,11 +404,23 @@ def refresh() {
     
         //send events
         sendEvent(name: "24 Hour Peak Production_a", value: rnd_peak24_a)
+        sendEvent(name: "24 Hour Peak Production_a - High", value: rnd_peak24High_a)
+        sendEvent(name: "24 Hour Peak Production_a - Low", value: rnd_peak24Low_a)
         sendEvent(name: "24 Hour Peak Production_b", value: rnd_peak24_b)
+        sendEvent(name: "24 Hour Peak Production_b - High", value: rnd_peak24High_b)
+        sendEvent(name: "24 Hour Peak Production_b - Low", value: rnd_peak24Low_b)
         sendEvent(name: "48 Hour Peak Production_a", value: rnd_peak48_a)
+        sendEvent(name: "48 Hour Peak Production_a - High", value: rnd_peak48High_a)
+        sendEvent(name: "48 Hour Peak Production_a - Low", value: rnd_peak48Low_a)
         sendEvent(name: "48 Hour Peak Production_b", value: rnd_peak48_b)
+        sendEvent(name: "48 Hour Peak Production_b - High", value: rnd_peak48High_b)
+        sendEvent(name: "48 Hour Peak Production_b - Low", value: rnd_peak48Low_b)
         sendEvent(name: "72 Hour Peak Production_a", value: rnd_peak72_a)
+        sendEvent(name: "72 Hour Peak Production_a - High", value: rnd_peak72High_a)
+        sendEvent(name: "72 Hour Peak Production_a - Low", value: rnd_peak72Low_a)
         sendEvent(name: "72 Hour Peak Production_b", value: rnd_peak72_b)
+        sendEvent(name: "72 Hour Peak Production_b - High", value: rnd_peak72High_b)
+        sendEvent(name: "72 Hour Peak Production_b - Low", value: rnd_peak72Low_b)
         sendEvent(name: "1 Hour Estimate_a", value: rnd_next1_a)
         sendEvent(name: "1 Hour Estimate_b", value: rnd_next1_b)
         sendEvent(name: "1 Hour Estimate", value: est_1hour)
@@ -352,9 +450,9 @@ def refresh() {
 	    html24hour +="<div style='line-height:25%;'><br></div>"
 	    html24hour +="<div style='line-height:100%;'><br>Peak Array Power:<br></div>"
         if ( resource_id_b != null ) {
-            html24hour +="<div style='line-height:100%;'>${rnd_peak24_a} kW / ${rnd_peak24_b} kW</div>"
+            html24hour +="<div style='line-height:100%;'>${rnd_peak24Low_a}/${rnd_peak24_a}/${rnd_peak24High_a} | ${rnd_peak24Low_b}/${rnd_peak24_b}/${rnd_peak24High_b} kW</div>"
         } else {
-            html24hour +="<div style='line-height:100%;'>${rnd_peak24_a} kW</div>"
+            html24hour +="<div style='line-height:100%;'>${rnd_peak24Low_a} / ${rnd_peak24_a} / ${rnd_peak24High_a} kW</div>"
         }
         html24hour +="<div style='line-height:25%;'><br></div>"
         if ( testMode == true ) {
@@ -367,15 +465,6 @@ def refresh() {
         
         if(debugLog) log.debug ("html24hour:" + html24hour.length() + " ${html24hour}")
         if (html24hour.length() >= 1024) log.error ("html24hour exceeding 1024 charcters. Will not display on dashboard correctly.")
-	
-        //recalculate 48 and 72 hour values so they are not cumulative
-        est_72hour_low = est_72hour_low - est_48hour_low
-        est_72hour = est_72hour - est_48hour
-        est_72hour_high = est_72hour_high - est_48hour_high
-
-        est_48hour_low = est_48hour_low - est_24hour_low
-        est_48hour = est_48hour - est_24hour
-        est_48hour_high = est_48hour_high - est_24hour_high
 
         //72 html hour
 	    html72hour ="<div style='line-height:100%;'>Estimates:<br></div>"
@@ -385,13 +474,13 @@ def refresh() {
 	    html72hour +="<div style='line-height:15%;'><br></div>"
 	    html72hour +="<div style='line-height:100%;'><br>Peak Array Power:<br></div>"
         if ( resource_id_b != null ) {
-            html72hour +="<div style='line-height:100%;'>00-24hr ${rnd_peak24_a} kW / ${rnd_peak24_b} kW</div>"
-            html72hour +="<div style='line-height:100%;'>24-48hr ${rnd_peak48_a} kW / ${rnd_peak48_b} kW</div>"
-            html72hour +="<div style='line-height:100%;'>48-72hr ${rnd_peak72_a} kW / ${rnd_peak72_b} kW</div>"
+            html72hour +="<div style='line-height:100%;'>00-24hr ${rnd_peak24Low_a}/${rnd_peak24_a}/${rnd_peak24High_a} | ${rnd_peak24Low_b}/${rnd_peak24_b}/${rnd_peak24High_b} kW</div>"
+            html72hour +="<div style='line-height:100%;'>24-48hr ${rnd_peak48Low_a}/${rnd_peak48_a}/${rnd_peak48High_a} | ${rnd_peak48Low_b}/${rnd_peak48_b}/${rnd_peak48High_b} kW</div>"
+            html72hour +="<div style='line-height:100%;'>48-72hr ${rnd_peak72Low_a}/${rnd_peak72_a}/${rnd_peak72High_a} | ${rnd_peak72Low_b}/${rnd_peak72_b}/${rnd_peak72High_b} kW</div>"
         } else {
-            html72hour +="<div style='line-height:100%;'>00-24hr ${rnd_peak24_a} kW</div>"
-            html72hour +="<div style='line-height:100%;'>24-48hr ${rnd_peak48_a} kW</div>"
-            html72hour +="<div style='line-height:100%;'>48-72hr ${rnd_peak72_a} kW</div>"
+            html72hour +="<div style='line-height:100%;'>00-24hr ${rnd_peak24Low_a} / ${rnd_peak24_a} / ${rnd_peak24High_a} kW</div>"
+            html72hour +="<div style='line-height:100%;'>24-48hr ${rnd_peak48Low_a} / ${rnd_peak48_a} / ${rnd_peak48High_a} kW</div>"
+            html72hour +="<div style='line-height:100%;'>48-72hr ${rnd_peak72Low_a} / ${rnd_peak72_a} / ${rnd_peak72High_a} kW</div>"
         }
         html72hour +="<div style='line-height:15%;'><br></div>"
         if ( testMode == true ) {
