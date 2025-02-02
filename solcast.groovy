@@ -9,6 +9,7 @@
  *      2025-01-30    StarkTemplar  1.0.4       Update to allow only 1 resource ID to be used and still work
  *      2025-01-31    StarkTemplar  1.0.5       Updated html tile to show all 3 estimates.
  *      2025-02-01    StarkTemplar  1.0.6       Update to add test mode. This saves the API json response in a state variable to avoid API calls.
+ *      2025-02-02    StarkTemplar  1.0.7       Updated Peak Metrics to not be cumulative.
  */
 
 metadata {
@@ -73,7 +74,7 @@ metadata {
 import groovy.json.*;
 
 def version() {
-    return "1.0.6"
+    return "1.0.7"
 }
 
 def installed() {
@@ -110,7 +111,7 @@ def updated() {
 def refresh() {
      
     outputTZ = TimeZone.getTimeZone('UTC')
-    def traceLog = false
+    def traceLog = true
     
     def next1_a = 0;
     def next24_a = 0;
@@ -141,6 +142,7 @@ def refresh() {
         if(traceLog) log.trace("size: ${size}")
         for(int x=0; x<size; x++){
             if(traceLog) log.trace x + " : " + forecasts[x]
+            //pv estimates are divided by 2 because the data is listed in 30 minute intervals.
             pv_estimate = forecasts[x].pv_estimate/2
             pv_estimate_high = forecasts[x].pv_estimate90/2
             pv_estimate_low = forecasts[x].pv_estimate10/2
@@ -163,17 +165,18 @@ def refresh() {
         }
 
         tomorrow = new Date().next().format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
-        forecast24_a = forecasts.findAll { it.period_end < tomorrow}
-        if(traceLog) log.trace forecast24_a
+        forecast24_a = forecasts.findAll { it.period_end < tomorrow }
+        if(traceLog) log.trace ("forecast24_a: ${forecast24_a}")
         peak24_a = forecast24_a.max() { it.pv_estimate }
 
         twoDays = new Date().plus(2).format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
-        forecast48_a = forecasts.findAll { it.period_end < twoDays}
-        if(traceLog) log.trace forecast48_a
+        forecast48_a = forecasts.findAll { it.period_end < twoDays && it.period_end > tomorrow }
+        if(traceLog) log.trace ("forecast48_a: ${forecast48_a}")
         peak48_a = forecast48_a.max() { it.pv_estimate }
 
-        peak72_a = forecasts.max() { it.pv_estimate }
-    
+        forecast72_a = forecasts.findAll { it.period_end > twoDays }
+        if(traceLog) log.trace ("forecast72_a: ${forecast72_a}")
+        peak72_a = forecast72_a.max() { it.pv_estimate }
         if(debugLog) log.debug  "{ \"next1_a\": " + next1_a + ", \"next24_a\": " +  next24_a + ", \"next24High_a\": " +  next24High_a + ", \"next24Low_a\": " + next24Low_a  + ", \"next48_a\": " + next48_a + ", \"next48High_a\": " + next48High_a + ", \"next48Low_a\": " + next48Low_a + ", \"next72_a\": " + next72_a + ", \"next72High_a\": " + next72High_a + ", \"next72Low_a\": " +  next72Low_a + "}";
     }
     
@@ -190,10 +193,7 @@ def refresh() {
     def next72Low_b = 0;
 	
     //only make the 2nd API call if resource_id_b is valid
-    if ( resource_id_b != null ) {
-        //delay between API calls
-        pauseExecution(30000)
-    
+    if ( resource_id_b != null ) {    
         // API call for b site
         host = "https://api.solcast.com.au/rooftop_sites/${resource_id_b}/forecasts?format=json&api_key=${api_key}&hours=72"
         if ( testMode == true ) {
@@ -201,6 +201,8 @@ def refresh() {
             log.info("testMode enabled, skipping API call and reusing JSON from previous call")
             if(traceLog) log.trace("forecasts: " + JsonOutput.toJson(forecasts))
         } else {
+            //delay between API calls
+            pauseExecution(30000)
             forecasts = apiCall(host)
         }
         if ( forecasts != false ) {
@@ -230,15 +232,17 @@ def refresh() {
 
             tomorrow = new Date().next().format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
             forecast24_b = forecasts.findAll { it.period_end < tomorrow}
-            if(traceLog) log.trace forecast24_b
+            if(traceLog) log.trace ("forecast24_b: ${forecast24_b}")
             peak24_b = forecast24_b.max() { it.pv_estimate }
 
             twoDays = new Date().plus(2).format("yyyy-MM-dd'T'HH:mm:ss'Z'",outputTZ)
-            forecast48_b = forecasts.findAll { it.period_end < twoDays}
-            if(traceLog) log.trace forecast48_b
+            forecast48_b = forecasts.findAll { it.period_end < twoDays && it.period_end > tomorrow }
+            if(traceLog) log.trace ("forecast48_b: ${forecast48_b}")
             peak48_b = forecast48_b.max() { it.pv_estimate }
 
-            peak72_b = forecasts.max() { it.pv_estimate }
+            forecast72_b = forecasts.findAll { it.period_end > twoDays }
+            if(traceLog) log.trace ("forecast72_b: ${forecast72_b}")
+            peak72_b = forecast72_b.max() { it.pv_estimate }
         }
     } else {
         if(logEnable) log.info("Skipping 2nd API call because resouce ID B is null")
@@ -262,17 +266,49 @@ def refresh() {
         est_48hour_low = (next48Low_a + next48Low_b).setScale(1, BigDecimal.ROUND_HALF_UP)
         est_72hour_low = (next72Low_a + next72Low_b).setScale(1, BigDecimal.ROUND_HALF_UP)
     
-        //round values
-        rnd_peak24_a = peak24_a.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
-        rnd_peak48_a = peak48_a.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
-        rnd_peak72_a = peak72_a.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
-        rnd_next1_a = (next1_a*1000).setScale(1, BigDecimal.ROUND_HALF_UP)
+        //round values if they are not integers
+        if (peak24_a.pv_estimate instanceof Integer) {
+            rnd_peak24_a = peak24_a.pv_estimate
+        } else {
+            rnd_peak24_a = peak24_a.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
+        }
+        if (peak48_a.pv_estimate instanceof Integer) {
+            rnd_peak48_a = peak48_a.pv_estimate
+        } else {
+            rnd_peak48_a = peak48_a.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
+        }
+        if (peak72_a.pv_estimate instanceof Integer) {
+            rnd_peak72_a = peak72_a.pv_estimate
+        } else {
+            rnd_peak72_a = peak72_a.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
+        }
+        if ((next1_a*1000) instanceof Integer) {
+            rnd_next1_a = (next1_a*1000)
+        } else {
+            rnd_next1_a = (next1_a*1000).setScale(1, BigDecimal.ROUND_HALF_UP)
+        }
 
         if ( peak24_b ) {
-            rnd_peak24_b = peak24_b.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
-            rnd_peak48_b = peak48_b.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
-            rnd_peak72_b = peak72_b.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
-            rnd_next1_b = (next1_b*1000).setScale(1, BigDecimal.ROUND_HALF_UP)
+            if (peak24_b.pv_estimate instanceof Integer) {
+                rnd_peak24_b = peak24_b.pv_estimate
+            } else {
+                rnd_peak24_b = peak24_b.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
+            }
+            if (peak48_b.pv_estimate instanceof Integer) {
+                rnd_peak48_b = peak48_b.pv_estimate
+            } else {
+                rnd_peak48_b = peak48_b.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
+            }
+            if (peak72_b.pv_estimate instanceof Integer) {
+                rnd_peak72_b = peak72_b.pv_estimate
+            } else {
+                rnd_peak72_b = peak72_b.pv_estimate.setScale(1, BigDecimal.ROUND_HALF_UP)
+            }
+            if ( (next1_b*1000) instanceof Integer) {
+                rnd_next1_b = (next1_b*1000)
+            } else {
+                rnd_next1_b = (next1_b*1000).setScale(1, BigDecimal.ROUND_HALF_UP)
+            }
         } else {
             rnd_peak24_b = 0
             rnd_peak48_b = 0
@@ -349,13 +385,13 @@ def refresh() {
 	    html72hour +="<div style='line-height:15%;'><br></div>"
 	    html72hour +="<div style='line-height:100%;'><br>Peak Array Power:<br></div>"
         if ( resource_id_b != null ) {
-            html72hour +="<div style='line-height:100%;'>24hr ${rnd_peak24_a} kW / ${rnd_peak24_b} kW</div>"
-            html72hour +="<div style='line-height:100%;'>48hr ${rnd_peak48_a} kW / ${rnd_peak48_b} kW</div>"
-            html72hour +="<div style='line-height:100%;'>72hr ${rnd_peak72_a} kW / ${rnd_peak72_b} kW</div>"
+            html72hour +="<div style='line-height:100%;'>00-24hr ${rnd_peak24_a} kW / ${rnd_peak24_b} kW</div>"
+            html72hour +="<div style='line-height:100%;'>24-48hr ${rnd_peak48_a} kW / ${rnd_peak48_b} kW</div>"
+            html72hour +="<div style='line-height:100%;'>48-72hr ${rnd_peak72_a} kW / ${rnd_peak72_b} kW</div>"
         } else {
-            html72hour +="<div style='line-height:100%;'>24hr ${rnd_peak24_a} kW</div>"
-            html72hour +="<div style='line-height:100%;'>48hr ${rnd_peak48_a} kW</div>"
-            html72hour +="<div style='line-height:100%;'>72hr ${rnd_peak72_a} kW</div>"
+            html72hour +="<div style='line-height:100%;'>00-24hr ${rnd_peak24_a} kW</div>"
+            html72hour +="<div style='line-height:100%;'>24-48hr ${rnd_peak48_a} kW</div>"
+            html72hour +="<div style='line-height:100%;'>48-72hr ${rnd_peak72_a} kW</div>"
         }
         html72hour +="<div style='line-height:15%;'><br></div>"
         if ( testMode == true ) {
